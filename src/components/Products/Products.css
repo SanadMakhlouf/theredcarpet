@@ -158,17 +158,26 @@
   background-color: #c82333;
 }
 
-.qr-reader-container {
+#qr-reader {
   width: 100%;
-  max-width: 400px;
+  max-width: 600px;
   margin: 0 auto;
-  padding: 20px;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
-#qr-reader {
-  width: 100% !important;
-  border: none !important;
-  box-shadow: none !important;
+#qr-reader video {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.qr-reader-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
 }
 
 #qr-reader button {

@@ -10,7 +10,7 @@ const Products = () => {
   const navigate = useNavigate();
   const { orderId } = useParams();
   const location = useLocation();
-  const orderData = location.state?.orderData;
+  const [orderData, setOrderData] = useState(location.state?.orderData || null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [scannerActive, setScannerActive] = useState(false);
   const [currentProductId, setCurrentProductId] = useState(null);
@@ -92,10 +92,10 @@ const Products = () => {
       }
     };
 
-    if (orderId) {
+    if (orderId && !location.state?.orderData) {
       fetchOrderData();
     }
-  }, [orderId]);
+  }, [orderId, location.state?.orderData]);
 
   useEffect(() => {
     return () => {
