@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5QrcodeScanner, Html5QrcodeScanType } from "html5-qrcode";
 import Modal from "react-modal";
 import "./Products.css";
 
@@ -13,10 +13,10 @@ const Products = () => {
   const [scannerActive, setScannerActive] = useState(false);
   const [currentProductId, setCurrentProductId] = useState(null);
   const [scanResult, setScanResult] = useState({ success: false, message: "" });
+  const [scanError, setScanError] = useState("");
   const scannerRef = useRef(null);
 
   useEffect(() => {
-    // Set up Modal's app element when component mounts
     const root = document.getElementById("root");
     if (root) {
       Modal.setAppElement(root);
@@ -24,7 +24,6 @@ const Products = () => {
   }, []);
 
   useEffect(() => {
-    // Clean up scanner when component unmounts
     return () => {
       if (scannerRef.current) {
         scannerRef.current.clear();
@@ -40,8 +39,8 @@ const Products = () => {
     setCurrentProductId(productId);
     setScannerActive(true);
     setIsModalOpen(true);
+    setScanError("");
 
-    // Wait for the modal to open and the element to be available
     setTimeout(() => {
       try {
         if (scannerRef.current) {
@@ -50,9 +49,15 @@ const Products = () => {
 
         const scanner = new Html5QrcodeScanner("qr-reader", {
           fps: 10,
-          qrbox: 250,
+          qrbox: { width: 250, height: 250 },
           aspectRatio: 1.0,
           showTorchButtonIfSupported: true,
+          formatsToSupport: [Html5QrcodeScanType.QR_CODE],
+          rememberLastUsedCamera: true,
+          supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true,
+          },
         });
 
         scannerRef.current = scanner;
@@ -76,14 +81,25 @@ const Products = () => {
             scanner.clear();
             scannerRef.current = null;
             setScannerActive(false);
+            setScanError("");
           },
-          (error) => {
-            // Error callback
-            console.warn(`QR Code scanning failed: ${error}`);
+          (errorMessage) => {
+            // Ignoring the "NotFoundException" as it's just indicating no QR code is currently visible
+            if (!errorMessage.includes("NotFoundException")) {
+              setScanError({
+                en: "Please make sure the QR code is clearly visible and well-lit",
+                ar: "يرجى التأكد من أن رمز QR واضح ومضاء جيدًا",
+              });
+              console.warn(`QR Code scanning failed: ${errorMessage}`);
+            }
           }
         );
       } catch (error) {
         console.error("Error initializing scanner:", error);
+        setScanError({
+          en: "Failed to start the camera. Please make sure you've granted camera permissions.",
+          ar: "فشل في تشغيل الكاميرا. يرجى التأكد من منح أذونات الكاميرا.",
+        });
         setScannerActive(false);
       }
     }, 100);
@@ -97,6 +113,7 @@ const Products = () => {
     setIsModalOpen(false);
     setScannerActive(false);
     setScanResult({ success: false, message: "" });
+    setScanError("");
   };
 
   if (!orderData || !orderData.line_items) {
@@ -176,6 +193,12 @@ const Products = () => {
                 <span className="ar">مسح رمز QR</span>
               </h2>
               <div id="qr-reader" className="qr-reader-container"></div>
+              {scanError && (
+                <div className="scan-error">
+                  <p className="en">{scanError.en}</p>
+                  <p className="ar">{scanError.ar}</p>
+                </div>
+              )}
             </>
           ) : scanResult.message ? (
             <div
