@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import Modal from "react-modal";
+import { getProductDetails } from "../../services/productService";
 import "./Products.css";
 
 const Products = () => {
@@ -14,6 +15,8 @@ const Products = () => {
   const [currentProductId, setCurrentProductId] = useState(null);
   const [scanResult, setScanResult] = useState({ success: false, message: "" });
   const [scanError, setScanError] = useState("");
+  const [productImages, setProductImages] = useState({});
+  const [loadingImages, setLoadingImages] = useState(true);
   const scannerRef = useRef(null);
 
   useEffect(() => {
@@ -22,6 +25,43 @@ const Products = () => {
       Modal.setAppElement(root);
     }
   }, []);
+
+  // Fetch product images when component mounts
+  useEffect(() => {
+    const fetchProductImages = async () => {
+      if (orderData?.line_items) {
+        setLoadingImages(true);
+        const imagesMap = {};
+
+        try {
+          await Promise.all(
+            orderData.line_items.map(async (item) => {
+              try {
+                const productData = await getProductDetails(item.product_id);
+                if (productData.images && productData.images.length > 0) {
+                  imagesMap[item.product_id] = productData.images[0].src;
+                }
+              } catch (error) {
+                console.error(
+                  `Error fetching image for product ${item.product_id}:`,
+                  error
+                );
+                imagesMap[item.product_id] = null;
+              }
+            })
+          );
+
+          setProductImages(imagesMap);
+        } catch (error) {
+          console.error("Error fetching product images:", error);
+        } finally {
+          setLoadingImages(false);
+        }
+      }
+    };
+
+    fetchProductImages();
+  }, [orderData]);
 
   useEffect(() => {
     return () => {
@@ -42,7 +82,6 @@ const Products = () => {
     const initializeScanner = async () => {
       if (isModalOpen && scannerActive && currentProductId) {
         try {
-          // Wait a bit for the DOM to be ready
           await new Promise((resolve) => setTimeout(resolve, 100));
 
           const qrReader = document.getElementById("qr-reader");
@@ -173,6 +212,7 @@ const Products = () => {
             <tr>
               <th>Order ID</th>
               <th>Product ID</th>
+              <th>Image</th>
               <th>Name</th>
               <th>Quantity</th>
               <th>Price</th>
@@ -185,6 +225,19 @@ const Products = () => {
               <tr key={product.id}>
                 <td>{orderId}</td>
                 <td>{product.product_id}</td>
+                <td>
+                  {loadingImages ? (
+                    <div className="loading-image">Loading...</div>
+                  ) : productImages[product.product_id] ? (
+                    <img
+                      src={productImages[product.product_id]}
+                      alt={product.name}
+                      className="product-image"
+                    />
+                  ) : (
+                    <div className="no-image">No image</div>
+                  )}
+                </td>
                 <td>{product.name}</td>
                 <td>{product.quantity}</td>
                 <td>
