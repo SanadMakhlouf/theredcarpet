@@ -3,6 +3,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import Modal from "react-modal";
 import { getProductDetails } from "../../services/productService";
+import { getOrders } from "../../services/orderService";
 import "./Products.css";
 
 const Products = () => {
@@ -18,12 +19,23 @@ const Products = () => {
   const [productImages, setProductImages] = useState({});
   const [loadingImages, setLoadingImages] = useState(true);
   const scannerRef = useRef(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const root = document.getElementById("root");
     if (root) {
       Modal.setAppElement(root);
     }
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   // Fetch product images when component mounts
@@ -62,6 +74,28 @@ const Products = () => {
 
     fetchProductImages();
   }, [orderData]);
+
+  // Fetch order data when component mounts
+  useEffect(() => {
+    const fetchOrderData = async () => {
+      try {
+        setLoading(true);
+        const orders = await getOrders();
+        const order = orders.find((o) => o.id.toString() === orderId);
+        if (order) {
+          setOrderData(order);
+        }
+      } catch (error) {
+        console.error("Error fetching order:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (orderId) {
+      fetchOrderData();
+    }
+  }, [orderId]);
 
   useEffect(() => {
     return () => {
@@ -186,6 +220,129 @@ const Products = () => {
     setScanError("");
   };
 
+  const renderProductsTable = () => (
+    <div className="products-table-container">
+      <table className="products-table">
+        <thead>
+          <tr>
+            <th>Order ID</th>
+            <th>Product ID</th>
+            <th>Image</th>
+            <th>Name</th>
+            <th>Quantity</th>
+            <th>Price</th>
+            <th>Total</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {orderData.line_items.map((product) => (
+            <tr key={product.id}>
+              <td>{orderId}</td>
+              <td>{product.product_id}</td>
+              <td>
+                {loadingImages ? (
+                  <div className="loading-image">Loading...</div>
+                ) : productImages[product.product_id] ? (
+                  <img
+                    src={productImages[product.product_id]}
+                    alt={product.name}
+                    className="product-image"
+                  />
+                ) : (
+                  <div className="no-image">No image</div>
+                )}
+              </td>
+              <td>{product.name}</td>
+              <td>{product.quantity}</td>
+              <td>
+                €{(parseFloat(product.total) / product.quantity).toFixed(2)}
+              </td>
+              <td>€{parseFloat(product.total).toFixed(2)}</td>
+              <td>
+                <button
+                  className="qr-code-btn"
+                  onClick={() => startScanning(product.product_id)}
+                >
+                  QR Code
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const renderProductsCards = () => (
+    <div className="products-cards">
+      {orderData.line_items.map((product) => (
+        <div key={product.id} className="product-card">
+          <div className="product-card-header">
+            <div className="product-card-ids">
+              <span className="product-card-order-id">Order #{orderId}</span>
+              <span className="product-card-product-id">
+                Product #{product.product_id}
+              </span>
+            </div>
+          </div>
+
+          {loadingImages ? (
+            <div className="loading-image">Loading...</div>
+          ) : productImages[product.product_id] ? (
+            <img
+              src={productImages[product.product_id]}
+              alt={product.name}
+              className="product-card-image"
+            />
+          ) : (
+            <div className="no-image">No image</div>
+          )}
+
+          <div className="product-card-content">
+            <h3 className="product-card-name">{product.name}</h3>
+
+            <div className="product-card-field">
+              <span className="product-card-label">Quantity</span>
+              <span className="product-card-value">{product.quantity}</span>
+            </div>
+
+            <div className="product-card-field">
+              <span className="product-card-label">Unit Price</span>
+              <span className="product-card-value">
+                €{(parseFloat(product.total) / product.quantity).toFixed(2)}
+              </span>
+            </div>
+
+            <div className="product-card-field">
+              <span className="product-card-label">Total</span>
+              <span className="product-card-value">
+                €{parseFloat(product.total).toFixed(2)}
+              </span>
+            </div>
+          </div>
+
+          <div className="product-card-actions">
+            <button
+              className="qr-code-btn"
+              onClick={() => startScanning(product.product_id)}
+            >
+              QR Code
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="products-container">
+        <div className="loading">Loading order details...</div>
+      </div>
+    );
+  }
+
   if (!orderData || !orderData.line_items) {
     return (
       <div className="products-container">
@@ -206,57 +363,7 @@ const Products = () => {
         <h1>Products for Order #{orderId}</h1>
       </div>
 
-      <div className="products-table-container">
-        <table className="products-table">
-          <thead>
-            <tr>
-              <th>Order ID</th>
-              <th>Product ID</th>
-              <th>Image</th>
-              <th>Name</th>
-              <th>Quantity</th>
-              <th>Price</th>
-              <th>Total</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orderData.line_items.map((product) => (
-              <tr key={product.id}>
-                <td>{orderId}</td>
-                <td>{product.product_id}</td>
-                <td>
-                  {loadingImages ? (
-                    <div className="loading-image">Loading...</div>
-                  ) : productImages[product.product_id] ? (
-                    <img
-                      src={productImages[product.product_id]}
-                      alt={product.name}
-                      className="product-image"
-                    />
-                  ) : (
-                    <div className="no-image">No image</div>
-                  )}
-                </td>
-                <td>{product.name}</td>
-                <td>{product.quantity}</td>
-                <td>
-                  €{(parseFloat(product.total) / product.quantity).toFixed(2)}
-                </td>
-                <td>€{parseFloat(product.total).toFixed(2)}</td>
-                <td>
-                  <button
-                    className="qr-code-btn"
-                    onClick={() => startScanning(product.product_id)}
-                  >
-                    QR Code
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {isMobile ? renderProductsCards() : renderProductsTable()}
 
       <Modal
         isOpen={isModalOpen}
