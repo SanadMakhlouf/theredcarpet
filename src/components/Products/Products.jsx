@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { Html5QrcodeScanner, Html5QrcodeScanType } from "html5-qrcode";
+import { Html5QrcodeScanner } from "html5-qrcode";
 import Modal from "react-modal";
 import "./Products.css";
 
@@ -26,88 +26,119 @@ const Products = () => {
   useEffect(() => {
     return () => {
       if (scannerRef.current) {
-        scannerRef.current.clear();
+        try {
+          scannerRef.current.clear();
+        } catch (error) {
+          console.error("Error clearing scanner:", error);
+        }
       }
     };
   }, []);
 
-  const handleBack = () => {
-    navigate("/");
-  };
+  // Effect to initialize scanner after modal is open
+  useEffect(() => {
+    let scanner = null;
+
+    const initializeScanner = async () => {
+      if (isModalOpen && scannerActive && currentProductId) {
+        try {
+          // Wait a bit for the DOM to be ready
+          await new Promise((resolve) => setTimeout(resolve, 100));
+
+          const qrReader = document.getElementById("qr-reader");
+          if (!qrReader) {
+            throw new Error("QR reader element not found");
+          }
+
+          scanner = new Html5QrcodeScanner(
+            "qr-reader",
+            {
+              fps: 10,
+              qrbox: { width: 250, height: 250 },
+              showTorchButtonIfSupported: true,
+              showZoomSliderIfSupported: true,
+              defaultZoomValueIfSupported: 2,
+              verbose: false,
+            },
+            false
+          );
+
+          scannerRef.current = scanner;
+
+          await scanner.render(
+            (decodedText) => {
+              try {
+                const isMatch = decodedText === currentProductId.toString();
+                setScanResult({
+                  success: isMatch,
+                  message: isMatch
+                    ? {
+                        en: "Correct! This is the right product.",
+                        ar: "صحيح! هذا هو المنتج الصحيح.",
+                      }
+                    : {
+                        en: "Wrong product! This QR code doesn't match.",
+                        ar: "منتج خاطئ! رمز QR هذا غير مطابق.",
+                      },
+                });
+                scanner.pause();
+                setScannerActive(false);
+              } catch (error) {
+                console.error("Error processing scan result:", error);
+                setScanError({
+                  en: "Error processing QR code",
+                  ar: "خطأ في معالجة رمز QR",
+                });
+              }
+            },
+            (errorMessage) => {
+              if (!errorMessage.includes("NotFoundException")) {
+                console.warn(`QR Code scanning failed: ${errorMessage}`);
+                setScanError({
+                  en: "Please make sure the QR code is clearly visible",
+                  ar: "يرجى التأكد من أن رمز QR واضح",
+                });
+              }
+            }
+          );
+        } catch (error) {
+          console.error("Error initializing scanner:", error);
+          setScanError({
+            en: "Failed to initialize scanner. Please try again.",
+            ar: "فشل في تهيئة الماسح الضوئي. يرجى المحاولة مرة أخرى.",
+          });
+          setScannerActive(false);
+        }
+      }
+    };
+
+    initializeScanner();
+
+    return () => {
+      if (scanner) {
+        try {
+          scanner.clear();
+        } catch (error) {
+          console.error("Error clearing scanner:", error);
+        }
+      }
+    };
+  }, [isModalOpen, scannerActive, currentProductId]);
 
   const startScanning = (productId) => {
     setCurrentProductId(productId);
     setScannerActive(true);
     setIsModalOpen(true);
     setScanError("");
-
-    setTimeout(() => {
-      try {
-        if (scannerRef.current) {
-          scannerRef.current.clear();
-        }
-
-        const scanner = new Html5QrcodeScanner("qr-reader", {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
-          showTorchButtonIfSupported: true,
-          formatsToSupport: [Html5QrcodeScanType.QR_CODE],
-          rememberLastUsedCamera: true,
-          supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-          experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true,
-          },
-        });
-
-        scannerRef.current = scanner;
-
-        scanner.render(
-          (decodedText) => {
-            // Success callback
-            const isMatch = decodedText === productId.toString();
-            setScanResult({
-              success: isMatch,
-              message: isMatch
-                ? {
-                    en: "Correct! This is the right product.",
-                    ar: "صحيح! هذا هو المنتج الصحيح.",
-                  }
-                : {
-                    en: "Wrong product! This QR code doesn't match.",
-                    ar: "منتج خاطئ! رمز QR هذا غير مطابق.",
-                  },
-            });
-            scanner.clear();
-            scannerRef.current = null;
-            setScannerActive(false);
-            setScanError("");
-          },
-          (errorMessage) => {
-            // Ignoring the "NotFoundException" as it's just indicating no QR code is currently visible
-            if (!errorMessage.includes("NotFoundException")) {
-              setScanError({
-                en: "Please make sure the QR code is clearly visible and well-lit",
-                ar: "يرجى التأكد من أن رمز QR واضح ومضاء جيدًا",
-              });
-              console.warn(`QR Code scanning failed: ${errorMessage}`);
-            }
-          }
-        );
-      } catch (error) {
-        console.error("Error initializing scanner:", error);
-        setScanError({
-          en: "Failed to start the camera. Please make sure you've granted camera permissions.",
-          ar: "فشل في تشغيل الكاميرا. يرجى التأكد من منح أذونات الكاميرا.",
-        });
-        setScannerActive(false);
-      }
-    }, 100);
   };
 
   const closeModal = () => {
     if (scannerRef.current) {
-      scannerRef.current.clear();
+      try {
+        scannerRef.current.clear();
+      } catch (error) {
+        console.error("Error clearing scanner:", error);
+      }
       scannerRef.current = null;
     }
     setIsModalOpen(false);
@@ -120,7 +151,7 @@ const Products = () => {
     return (
       <div className="products-container">
         <h1>No products found for this order</h1>
-        <button onClick={handleBack} className="back-btn">
+        <button onClick={() => navigate("/")} className="back-btn">
           ← Back to Orders
         </button>
       </div>
@@ -130,7 +161,7 @@ const Products = () => {
   return (
     <div className="products-container">
       <div className="products-header">
-        <button onClick={handleBack} className="back-btn">
+        <button onClick={() => navigate("/")} className="back-btn">
           ← Back to Orders
         </button>
         <h1>Products for Order #{orderId}</h1>
