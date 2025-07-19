@@ -200,6 +200,7 @@ const Orders = () => {
             <option>Processing</option>
             <option>Completed</option>
             <option>Cancelled</option>
+            <option>Refunded</option>
           </select>
         </div>
       </div>

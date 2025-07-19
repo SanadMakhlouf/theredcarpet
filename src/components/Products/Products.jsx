@@ -255,10 +255,8 @@ const Products = () => {
               </td>
               <td>{product.name}</td>
               <td>{product.quantity}</td>
-              <td>
-                €{(parseFloat(product.total) / product.quantity).toFixed(2)}
-              </td>
-              <td>€{parseFloat(product.total).toFixed(2)}</td>
+              <td>{parseFloat(product.price).toFixed(2)} د.إ</td>
+              <td>{parseFloat(product.total).toFixed(2)} د.إ</td>
               <td>
                 <button
                   className="qr-code-btn"
@@ -310,14 +308,14 @@ const Products = () => {
             <div className="product-card-field">
               <span className="product-card-label">Unit Price</span>
               <span className="product-card-value">
-                €{(parseFloat(product.total) / product.quantity).toFixed(2)}
+                {parseFloat(product.price).toFixed(2)} د.إ
               </span>
             </div>
 
             <div className="product-card-field">
               <span className="product-card-label">Total</span>
               <span className="product-card-value">
-                €{parseFloat(product.total).toFixed(2)}
+                {parseFloat(product.total).toFixed(2)} د.إ
               </span>
             </div>
           </div>
