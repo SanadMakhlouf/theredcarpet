@@ -79,35 +79,31 @@ export const createOrder = async (orderData) => {
 };
 
 // Function to update order status
-export const updateOrderStatus = async (orderId, status) => {
+export const updateOrderStatus = async (orderId, newStatus) => {
   try {
-    // When API is ready, uncomment this code
-    // const response = await fetch(`${config.api.url}/orders/${orderId}/status`, {
-    //   method: 'PATCH',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify({ status }),
-    // })
-    // const data = await response.json()
-    // return data
+    const consumerKey = import.meta.env.VITE_WOOCOMMERCE_CONSUMER_KEY;
+    const consumerSecret = import.meta.env.VITE_WOOCOMMERCE_CONSUMER_SECRET;
+    const perPage = import.meta.env.VITE_ORDERS_PER_PAGE;
+    const apiurl = import.meta.env.VITE_WOOCOMMERCE_API_URL;
+    const response = await axios.put(
+      `${apiurl}/orders/${orderId}`,
+      {
+        status: newStatus,
+      },
+      {
+        auth: {
+          username: consumerKey,
+          password: consumerSecret,
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
 
-    // For now, use mock data
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const orderIndex = mockOrders.findIndex(
-          (order) => order.id === orderId
-        );
-        if (orderIndex !== -1) {
-          mockOrders[orderIndex].status = status;
-          resolve(mockOrders[orderIndex]);
-        } else {
-          reject(new Error("Order not found"));
-        }
-      }, 500);
-    });
+    console.log("Order updated:", response.data);
+    // Optionally refresh state/UI here
   } catch (error) {
-    console.error("Error updating order status:", error);
-    throw error;
+    console.error("Error updating order status:", error.response?.data || error.message);
   }
 };

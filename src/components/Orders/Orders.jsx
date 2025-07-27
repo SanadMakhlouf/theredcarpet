@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Orders.css";
 import { getOrders } from "../../services/orderService.js";
+import { updateOrderStatus } from "../../services/orderService.js";
+
 
 const Orders = () => {
   const navigate = useNavigate();
@@ -40,9 +42,28 @@ const Orders = () => {
   };
 
   const handleStatusChange = (e) => {
-    setStatusFilter(e.target.value);
+   setStatusFilter(e.target.value);
   };
 
+  const handleStatusChanges = async (orderId, e) => {
+    const newStatus = e.target.value;
+    // Update UI immediately
+    setOrders((prevOrders) =>
+      prevOrders.map((order) =>
+        order.id === orderId ? { ...order, status: newStatus } : order
+      )
+    );
+  
+    try {
+      await updateOrderStatus(orderId, newStatus);
+    } catch (error) {
+      // Revert UI if API call fails
+      fetchOrders(); // Or revert the specific order status
+      console.error("Failed to update order status:", error);
+    }
+  };
+  
+  
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
   };
@@ -72,6 +93,8 @@ const Orders = () => {
   const handleSeeProducts = (orderId) => {
     navigate(`/products/${orderId}`);
   };
+
+
 
   if (loading) {
     return (
@@ -114,10 +137,24 @@ const Orders = () => {
               <td>{`${order.billing.first_name} ${order.billing.last_name}`}</td>
               <td>{new Date(order.date_created).toLocaleDateString()}</td>
               <td>
-                <span className={`status-badge ${order.status}`}>
-                  {order.status}
-                </span>
-              </td>
+  <select
+    value={order.status}
+    onChange={(e) => handleStatusChanges(order.id, e)}
+    className={`status-dropdown ${order.status}`}
+  >
+    <option value="pending">Pending</option>
+    <option value="processing">Processing</option>
+    <option value="on-hold">On Hold</option>
+    <option value="completed">Completed</option>
+    <option value="cancelled">Cancelled</option>
+    <option value="refunded">Refunded</option>
+    <option value="failed">Failed</option>
+    <option value="shipped">Shipped</option>
+    <option value="awaiting-shipment">Awaiting Shipment</option>
+    <option value="delivery-in-progress">Delivery in Progress</option>
+  </select>
+</td>
+
               <td>{order.payment_method_title}</td>
               <td>
                 <button
@@ -153,9 +190,22 @@ const Orders = () => {
             </div>
             <div className="order-card-field">
               <span className="order-card-label">Status</span>
-              <span className={`status-badge ${order.status}`}>
-                {order.status}
-              </span>
+              <select
+    value={order.status}
+    onChange={(e) => handleStatusChanges(order.id, e)}
+    className={`status-badge ${order.status}`}
+  >
+    <option value="pending">Pending</option>
+    <option value="processing">Processing</option>
+    <option value="on-hold">On Hold</option>
+    <option value="completed">Completed</option>
+    <option value="cancelled">Cancelled</option>
+    <option value="refunded">Refunded</option>
+    <option value="failed">Failed</option>
+    <option value="shipped">Shipped</option>
+    <option value="awaiting-shipment">Awaiting Shipment</option>
+    <option value="delivery-in-progress">Delivery in Progress</option>
+  </select>
             </div>
             <div className="order-card-field">
               <span className="order-card-label">Payment</span>
